@@ -2,7 +2,7 @@
 
 An interactive, browser-based 3D simulation of a DC motor — built to make electromagnetic induction *visible*: the field, the current-carrying coil, the commutator switching, and the resulting force and rotation. Runs on desktop as a full 3D explorable model, and on mobile as a real **Augmented Reality** experience via WebXR — no app install required.
 
-**🔗 Demo:** [Working in Laptop](docs/videos/working-laptop2.mp4) [Working in Mobile](docs/videos/mobile_documentation.mp4)
+**🔗 Demo:** [Working in Laptop](https://github.com/user-attachments/assets/1b09377f-ce7a-4975-ae87-72dd38b9867e) [Working in Mobile](docs/videos/mobile_documentation.mp4)
 
 
 ![Desktop view of the DC motor model](docs/screenshot/complete-model.jpeg)
