@@ -6,7 +6,7 @@ An interactive, browser-based 3D simulation of a DC motor — built to make elec
 
 
 ![Desktop view of the DC motor model](docs/screenshot/complete-model.jpeg)
-![Mobile view of the DC motor model](docs/screenshot/mobile_view.jpeg)
+
 ---
 
 ## ✨ Features
