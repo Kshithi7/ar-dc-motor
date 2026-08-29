@@ -5,8 +5,8 @@ An interactive, browser-based 3D simulation of a DC motor — built to make elec
 **🔗 Demo:** [Working in Laptop](docs/videos/working-laptop2.mp4) [Working in Mobile](docs/videos/mobile_documentation.mp4)
 
 
-![Desktop view of the DC motor model](docs/screenshot/3D_view.png)
-![Mobile view of the DC motor model](docs/screenshots/desktop-view.png)
+![Desktop view of the DC motor model](docs/screenshot/complete-model.jpeg)
+![Mobile view of the DC motor model](docs/screenshot/mobile_view.jpeg)
 ---
 
 ## ✨ Features
@@ -25,7 +25,7 @@ An interactive, browser-based 3D simulation of a DC motor — built to make elec
 
 | Desktop | Mobile | AR (real device) |
 |---|---|---|
-| ![Desktop view](docs/screenshot/desktop-view.png) | ![Mobile view](docs/screenshots/mobile-view.jpeg) | ![Live AR placement](docs/screenshot/ar_live_placement.jpg) |
+| ![Desktop view](docs/screenshot/desktop-view.png) | ![Mobile view](docs/screenshot/mobile_view.jpeg) | ![Live AR placement](docs/screenshot/ar_live_placement.jpg) |
 
 ---
 
