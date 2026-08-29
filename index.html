@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>DC Motor — Interactive Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a0e14;
+    --panel: rgba(18,24,38,0.86);
+    --panel-border: #1f2a3d;
+    --grid-line: rgba(79,168,224,0.07);
+    --text-primary: #e6edf3;
+    --text-secondary: #7c8aa0;
+    --copper: #c97a45;
+    --n-red: #d64545;
+    --s-blue: #3b6fd6;
+    --field: #4fa8e0;
+    --force: #f2b134;
+    --accent: #f2b134;
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'IBM Plex Mono', monospace;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #stage{
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+  canvas{ display:block; touch-action: none; }
+
+  .eyebrow{
+    font-size: 10px; letter-spacing: 0.18em; color: var(--text-secondary);
+    text-transform: uppercase; font-weight: 500;
+  }
+  h1{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px; font-weight: 700; margin: 2px 0 0 0; letter-spacing: 0.01em;
+  }
+
+  #hud-title{
+    position: fixed; top: 18px; left: 18px; z-index: 5;
+    background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 10px; padding: 12px 16px; backdrop-filter: blur(6px);
+    max-width: 260px;
+  }
+  #hud-title .hint{
+    margin-top: 8px; font-size: 10.5px; color: var(--text-secondary); line-height: 1.5;
+  }
+
+  #panel{
+    position: fixed; top: 18px; right: 18px; z-index: 5; width: 250px;
+    background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 10px; padding: 14px 16px 16px; backdrop-filter: blur(6px);
+    max-height: calc(100vh - 36px); overflow-y: auto;
+  }
+  .panel-title{
+    font-size: 10px; letter-spacing: 0.14em; color: var(--text-secondary);
+    text-transform: uppercase; margin-bottom: 10px; display:flex; justify-content: space-between; align-items:center;
+  }
+  #panelCollapse{
+    background:none; border:none; color:var(--text-secondary); cursor:pointer;
+    font-size:12px; padding:0 2px; line-height:1;
+  }
+  #panelCollapse:hover{ color: var(--text-primary); }
+  #panelBody.collapsed{ display:none; }
+
+  .accordion{ margin-top: 8px; border-top: 1px solid var(--panel-border); }
+  .accordion-toggle{
+    width:100%; display:flex; justify-content:space-between; align-items:center;
+    background:none; border:none; color:var(--text-secondary); font-family:'IBM Plex Mono';
+    font-size:10px; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; padding:9px 0;
+  }
+  .accordion-toggle:hover{ color: var(--text-primary); }
+  .accordion-toggle .chev{ transition: transform .15s; display:inline-block; }
+  .accordion-toggle.open .chev{ transform: rotate(180deg); }
+  .accordion-body{ padding-bottom: 6px; }
+  .accordion-body[hidden]{ display:none; }
+  .row{ display:flex; align-items:center; justify-content: space-between; margin: 9px 0; gap: 10px; }
+  .row label{ font-size: 11.5px; color: var(--text-primary); }
+  .row .val{ font-size: 10.5px; color: var(--text-secondary); min-width: 30px; text-align:right; }
+
+  .switch{ position:relative; width:36px; height:19px; flex-shrink:0; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .slider-switch{
+    position:absolute; cursor:pointer; inset:0; background: #263248;
+    border-radius: 20px; transition: background .15s;
+  }
+  .slider-switch:before{
+    content:""; position:absolute; height:14px; width:14px; left:2.5px; top:2.5px;
+    background: #8b98a9; border-radius:50%; transition: transform .15s, background .15s;
+  }
+  input:checked + .slider-switch{ background: #3a5a3a; }
+  input:checked + .slider-switch:before{ transform: translateX(17px); background: var(--force); }
+
+  input[type=range]{
+    -webkit-appearance:none; width:100%; height:3px; border-radius:2px;
+    background:#263248; outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:13px; height:13px; border-radius:50%;
+    background: var(--force); cursor:pointer; border: 2px solid #0a0e14;
+  }
+
+  #playBtn{
+    width:100%; margin-top: 4px; padding: 8px 0; border-radius: 7px; border:1px solid var(--panel-border);
+    background:#182236; color: var(--text-primary); font-family:'IBM Plex Mono'; font-size:11.5px;
+    letter-spacing:0.06em; cursor:pointer; text-transform:uppercase; font-weight:600;
+  }
+  #playBtn:hover{ background:#1f2c47; }
+
+  .divider{ height:1px; background:var(--panel-border); margin: 12px 0; }
+
+  #legend{
+    font-size: 10.5px; color: var(--text-secondary); display:flex; gap:10px 14px; flex-wrap:wrap;
+  }
+  .swatch{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+
+  #schematic{ display:block; border-radius: 6px; background: #060a11; }
+
+  #info-panel{
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(140%);
+    z-index: 6; width: min(420px, 88vw);
+    background: var(--panel); border: 1px solid var(--panel-border); border-left: 3px solid var(--accent);
+    border-radius: 10px; padding: 14px 16px; backdrop-filter: blur(8px);
+    transition: transform .22s ease;
+  }
+  #info-panel.show{ transform: translateX(-50%) translateY(0); }
+  #info-panel .title{ font-family:'Space Grotesk'; font-weight:700; font-size:14px; margin-bottom:4px; color: var(--accent); }
+  #info-panel .desc{ font-size:12px; line-height:1.55; color: var(--text-primary); }
+  #info-close{
+    position:absolute; top:8px; right:10px; cursor:pointer; color:var(--text-secondary);
+    font-size: 14px; background:none; border:none; font-family:inherit;
+  }
+
+  .label3d{
+    position:absolute; z-index:4; pointer-events:none; transform: translate(-50%,-100%);
+    font-size: 10px; letter-spacing:0.05em; color: var(--text-primary);
+    background: rgba(10,14,20,0.72); border:1px solid var(--panel-border);
+    padding: 3px 7px; border-radius: 5px; white-space:nowrap;
+  }
+  .label3d:after{
+    content:""; position:absolute; left:50%; top:100%; width:1px; height:10px;
+    background: var(--panel-border); transform: translateX(-50%);
+  }
+
+  #arBtn{
+    position:fixed; z-index:6; top: 18px; left:50%; transform: translateX(-50%);
+    background: var(--force); color:#12100a; border:none; border-radius: 20px;
+    padding: 9px 20px; font-family:'Space Grotesk'; font-weight:700; font-size:12.5px;
+    letter-spacing:0.04em; cursor:pointer; box-shadow: 0 4px 18px rgba(242,177,52,0.28);
+    display:none;
+  }
+  #arBtn.ready{ display:block; }
+  #arBtn:disabled{ opacity:0.5; cursor:not-allowed; }
+  #arNote{
+    position:fixed; z-index:6; top:62px; left:50%; transform: translateX(-50%);
+    font-size:10px; color:var(--text-secondary); background:var(--panel); border:1px solid var(--panel-border);
+    padding:5px 10px; border-radius:6px; display:none; max-width:260px; text-align:center;
+  }
+
+  @media (max-width: 640px){
+    #panel{ width: 200px; padding:10px 12px 12px; top:auto; bottom: 100px; right: 10px; max-height: 45vh; }
+    #hud-title{ max-width: 200px; padding:10px 12px; }
+    #info-panel{ width: 92vw; }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div id="hud-title">
+  <div class="eyebrow">Electromagnetic Induction Lab</div>
+  <h1>DC Motor — Live Model</h1>
+  <div class="hint">Drag to rotate the view · scroll or pinch to zoom · tap any part for details</div>
+</div>
+
+<button id="arBtn">▲ View in AR</button>
+<div id="arNote">AR needs a WebXR-capable phone (e.g. Chrome on Android) served over HTTPS in its own tab.</div>
+
+<div id="panel">
+  <div class="panel-title">Controls <button id="panelCollapse" aria-label="Collapse controls">–</button></div>
+
+  <div id="panelBody">
+  <button id="playBtn">⏸ Pause</button>
+
+  <div class="row">
+    <label>Speed</label>
+    <input type="range" id="speedSlider" min="0" max="10" step="0.1" value="3.5" style="width:120px">
+    <span class="val" id="speedVal">3.5</span>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="row">
+    <label>Field lines</label>
+    <label class="switch"><input type="checkbox" id="toggleField" checked><span class="slider-switch"></span></label>
+  </div>
+  <div class="row">
+    <label>Force vectors</label>
+    <label class="switch"><input type="checkbox" id="toggleForce" checked><span class="slider-switch"></span></label>
+  </div>
+  <div class="row">
+    <label>Labels</label>
+    <label class="switch"><input type="checkbox" id="toggleLabels" checked><span class="slider-switch"></span></label>
+  </div>
+  <div class="row">
+    <label>Cross-section</label>
+    <label class="switch"><input type="checkbox" id="toggleClip"><span class="slider-switch"></span></label>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="row">
+    <label>Explode</label>
+    <input type="range" id="explodeSlider" min="0" max="1" step="0.01" value="0" style="width:120px">
+    <span class="val" id="explodeVal">0%</span>
+  </div>
+
+  <div class="divider"></div>
+  <div class="row" style="margin:0;">
+    <label style="color:var(--text-secondary)">Shaft angle</label>
+    <span class="val" id="angleVal">0°</span>
+  </div>
+
+  <div class="accordion">
+    <button class="accordion-toggle" id="legendToggle" aria-expanded="false">Legend <span class="chev">▾</span></button>
+    <div class="accordion-body" id="legend" hidden>
+      <span><span class="swatch" style="background:var(--n-red)"></span>N pole</span>
+      <span><span class="swatch" style="background:var(--s-blue)"></span>S pole</span>
+      <span><span class="swatch" style="background:var(--field)"></span>Field (B)</span>
+      <span><span class="swatch" style="background:var(--force)"></span>Force (F)</span>
+      <span><span class="swatch" style="background:var(--copper)"></span>Copper</span>
+    </div>
+  </div>
+
+  <div class="accordion">
+    <button class="accordion-toggle" id="circuitToggle" aria-expanded="false">Circuit <span class="chev">▾</span></button>
+    <div class="accordion-body" id="circuit-body" hidden>
+      <canvas id="schematic" width="180" height="120"></canvas>
+    </div>
+  </div>
+  </div>
+</div>
+
+<div id="info-panel">
+  <button id="info-close">✕</button>
+  <div class="title" id="info-title">—</div>
+  <div class="desc" id="info-desc">—</div>
+</div>
+
+<div id="labels-layer"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ---------- basic feature check ----------
+  if (typeof THREE === 'undefined') {
+    document.getElementById('hud-title').innerHTML =
+      '<div class="eyebrow">Error</div><h1 style="font-size:14px">3D library failed to load</h1>' +
+      '<div class="hint">Check your connection and reload.</div>';
+  } else {
+    init();
+  }
+
+  function init(){
+
+  // ---------------- renderer / scene / camera ----------------
+  const stage = document.getElementById('stage');
+  const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 0);
+  renderer.localClippingEnabled = true;
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth/window.innerHeight, 0.05, 100);
+
+  const target = new THREE.Vector3(0,0,0);
+  const spherical = { radius: 8.5, theta: Math.PI*0.28, phi: Math.PI*0.42 };
+  function updateCameraFromSpherical(){
+    const s = spherical;
+    camera.position.set(
+      target.x + s.radius * Math.sin(s.phi) * Math.sin(s.theta),
+      target.y + s.radius * Math.cos(s.phi),
+      target.z + s.radius * Math.sin(s.phi) * Math.cos(s.theta)
+    );
+    camera.lookAt(target);
+  }
+  updateCameraFromSpherical();
+
+  // lights
+  scene.add(new THREE.AmbientLight(0x8fa4c9, 0.55));
+  const key = new THREE.DirectionalLight(0xffffff, 1.0);
+  key.position.set(5,7,4);
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0x4fa8e0, 0.4);
+  rim.position.set(-6,2,-4);
+  scene.add(rim);
+
+  // ---------------- geometry constants ----------------
+  const R = 1.25;              // coil radius from shaft axis
+  const coilHalfH = 1.15;      // half-height of coil sides
+  const rodR = 0.075;          // coil rod thickness
+  const shaftLen = 3.0;
+  const shaftR = 0.09;
+  const statorInnerR = 1.55;
+  const statorOuterR = 1.95;
+  const statorHalfH = 1.35;
+  const housingR = 2.25;
+  const housingHalfH = 1.65;
+  const commY = -1.55;         // commutator vertical position (bottom of rotor)
+  const commR = 0.34;
+  const commH = 0.34;
+  const brushZ = commR + 0.14;
+
+  const COL_RED = 0xd64545, COL_BLUE = 0x3b6fd6, COL_COPPER = 0xc97a45,
+        COL_STEEL = 0x4a5568, COL_GRAPHITE = 0x1c2230, COL_FIELD = 0x4fa8e0, COL_FORCE = 0xf2b134;
+
+  const motorGroup = new THREE.Group();
+  scene.add(motorGroup);
+  const staticGroup = new THREE.Group();
+  const rotorGroup = new THREE.Group();
+  motorGroup.add(staticGroup, rotorGroup);
+
+  const interactive = []; // {mesh, title, desc}
+  function tag(mesh, title, desc){ mesh.userData.info = {title, desc}; interactive.push(mesh); }
+
+  // clipping plane for cross-section
+  const clipPlane = new THREE.Plane(new THREE.Vector3(0,0,1), 0);
+  let clipOn = false;
+
+  // ---------------- housing ----------------
+  const housingGeo = new THREE.CylinderGeometry(housingR, housingR, housingHalfH*2, 40, 1, true);
+  const housingMat = new THREE.MeshStandardMaterial({
+    color: COL_STEEL, transparent:true, opacity:0.13, side: THREE.DoubleSide,
+    metalness:0.3, roughness:0.6, clippingPlanes: []
+  });
+  const housing = new THREE.Mesh(housingGeo, housingMat);
+  staticGroup.add(housing);
+  const housingEdges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.CylinderGeometry(housingR, housingR, housingHalfH*2, 24, 1, true)),
+    new THREE.LineBasicMaterial({ color: 0x2c3a52, transparent:true, opacity:0.5 })
+  );
+  staticGroup.add(housingEdges);
+  tag(housing, "Housing / stator frame", "Holds the magnets in place and supports the rotating shaft assembly.");
+
+  // ---------------- stator poles ----------------
+  function makePole(thetaStart, thetaLength, color, name, desc){
+    const geo = new THREE.CylinderGeometry(statorOuterR, statorOuterR, statorHalfH*2, 28, 1, true, thetaStart, thetaLength);
+    const mat = new THREE.MeshStandardMaterial({ color, metalness:0.15, roughness:0.5, side: THREE.DoubleSide, clippingPlanes:[clipPlane] });
+    const mesh = new THREE.Mesh(geo, mat);
+    staticGroup.add(mesh);
+    tag(mesh, name, desc);
+    return mesh;
+  }
+  const poleN = makePole(Math.PI/2+0.15, Math.PI-0.3, COL_RED, "N pole (stator magnet)",
+    "Field lines leave the North pole and cross the air gap toward the South pole, passing through the spinning coil.");
+  const poleS = makePole(-Math.PI/2+0.15, Math.PI-0.3, COL_BLUE, "S pole (stator magnet)",
+    "Field lines re-enter the magnet here. Together with the N pole, it creates the steady field the coil spins inside.");
+
+  // ---------------- rotor: shaft ----------------
+  const shaftGeo = new THREE.CylinderGeometry(shaftR, shaftR, shaftLen, 16);
+  const shaftMat = new THREE.MeshStandardMaterial({ color: 0x9aa7ba, metalness:0.7, roughness:0.35 });
+  const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+  rotorGroup.add(shaft);
+  tag(shaft, "Shaft", "Carries the rotor's spin out of the motor to do mechanical work.");
+
+  // ---------------- rotor: coil (rectangular loop) ----------------
+  const sideGeo = new THREE.CylinderGeometry(rodR, rodR, coilHalfH*2, 12);
+  const sideA = new THREE.Mesh(sideGeo, new THREE.MeshStandardMaterial({ color: COL_RED, metalness:0.6, roughness:0.35 }));
+  sideA.position.set(R, 0, 0);
+  const sideB = new THREE.Mesh(sideGeo.clone(), new THREE.MeshStandardMaterial({ color: COL_BLUE, metalness:0.6, roughness:0.35 }));
+  sideB.position.set(-R, 0, 0);
+  rotorGroup.add(sideA, sideB);
+  const coilDesc = "The rotating loop of wire. Current flowing through it inside the magnetic field feels a force (F = BIL) on each side — that force is the torque that spins the shaft.";
+  tag(sideA, "Armature coil (rotor)", coilDesc);
+  tag(sideB, "Armature coil (rotor)", coilDesc);
+
+  function makeCrossbar(y){
+    const geo = new THREE.CylinderGeometry(rodR*0.9, rodR*0.9, R*2, 12);
+    const bar = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: COL_COPPER, metalness:0.6, roughness:0.35 }));
+    bar.rotation.z = Math.PI/2;
+    bar.position.y = y;
+    rotorGroup.add(bar);
+    tag(bar, "Armature coil (rotor)", coilDesc);
+  }
+  makeCrossbar(coilHalfH);
+  makeCrossbar(-coilHalfH);
+
+  // ---------------- commutator (split ring) ----------------
+  function makeCommSeg(thetaStart){
+    const geo = new THREE.CylinderGeometry(commR, commR, commH, 24, 1, false, thetaStart, Math.PI-0.12);
+    const mat = new THREE.MeshStandardMaterial({ color: COL_COPPER, metalness:0.75, roughness:0.3 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.y = commY;
+    rotorGroup.add(mesh);
+    tag(mesh, "Commutator", "A split copper ring on the shaft. As it turns, it swaps which coil end connects to the positive brush every half turn — reversing the coil current so the torque always pushes the same way.");
+    return mesh;
+  }
+  const commSegA = makeCommSeg(0.06);
+  const commSegB = makeCommSeg(Math.PI+0.06);
+
+  // brushes (static)
+  function makeBrush(z){
+    const geo = new THREE.BoxGeometry(0.26, 0.22, 0.16);
+    const mat = new THREE.MeshStandardMaterial({ color: COL_GRAPHITE, metalness:0.2, roughness:0.8 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(0, commY, z);
+    staticGroup.add(mesh);
+    tag(mesh, "Brushes", "Fixed carbon contacts that press against the spinning commutator, feeding current from the external circuit into the coil.");
+    return mesh;
+  }
+  const brushTop = makeBrush(brushZ);
+  const brushBot = makeBrush(-brushZ);
+
+  // wires + battery
+  const wireMat = new THREE.LineBasicMaterial({ color: 0x5a6a85 });
+  function makeWire(points){
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geo, wireMat);
+    staticGroup.add(line);
+    return line;
+  }
+  const battY = commY - 1.0;
+  makeWire([ new THREE.Vector3(0, commY, brushZ), new THREE.Vector3(0.9, commY, brushZ), new THREE.Vector3(0.9, battY, 0.35) ]);
+  makeWire([ new THREE.Vector3(0, commY, -brushZ), new THREE.Vector3(0.9, commY, -brushZ), new THREE.Vector3(0.9, battY, -0.35) ]);
+
+  const battGroup = new THREE.Group();
+  const battBody = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.34,0.9), new THREE.MeshStandardMaterial({color:0x232c40, metalness:0.3, roughness:0.6}));
+  const battPlus = new THREE.Mesh(new THREE.BoxGeometry(0.52,0.36,0.06), new THREE.MeshStandardMaterial({color:COL_RED}));
+  battPlus.position.z = 0.45;
+  const battMinus = new THREE.Mesh(new THREE.BoxGeometry(0.52,0.36,0.03), new THREE.MeshStandardMaterial({color:0x8b98a9}));
+  battMinus.position.z = -0.45;
+  battGroup.add(battBody, battPlus, battMinus);
+  battGroup.position.set(0.9, battY, 0);
+  staticGroup.add(battGroup);
+  tag(battBody, "DC source", "Supplies the direct current that drives the coil, through the brushes and commutator.");
+
+  // ---------------- field lines ----------------
+  const fieldGroup = new THREE.Group();
+  motorGroup.add(fieldGroup);
+  const fieldMat = new THREE.LineBasicMaterial({ color: COL_FIELD, transparent:true, opacity:0.55 });
+  [-0.9,-0.45,0,0.45,0.9].forEach(function(y){
+    const from = new THREE.Vector3(-statorInnerR+0.1, y, 0);
+    const to = new THREE.Vector3(statorInnerR-0.1, y, 0);
+    const mid = new THREE.Vector3(0, y + (y===0?0.35:0), 0.55);
+    const curve = new THREE.QuadraticBezierCurve3(from, mid, to);
+    const pts = curve.getPoints(24);
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    fieldGroup.add(new THREE.Line(geo, fieldMat));
+    const arrowDir = curve.getTangent(0.62).normalize();
+    const arrowPos = curve.getPoint(0.62);
+    const arrow = new THREE.ArrowHelper(arrowDir, arrowPos, 0.28, COL_FIELD, 0.14, 0.09);
+    fieldGroup.add(arrow);
+  });
+
+  // ---------------- force arrows (updated live) ----------------
+  const forceArrowA = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(), 0.6, COL_FORCE, 0.16, 0.1);
+  const forceArrowB = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(), 0.6, COL_FORCE, 0.16, 0.1);
+  motorGroup.add(forceArrowA, forceArrowB);
+
+  // ---------------- HTML labels ----------------
+  const labelsLayer = document.getElementById('labels-layer');
+  const labelDefs = [
+    { pos: new THREE.Vector3(-((statorInnerR+statorOuterR)/2), 0, 0), text: "N POLE" },
+    { pos: new THREE.Vector3(((statorInnerR+statorOuterR)/2), 0, 0), text: "S POLE" },
+    { pos: new THREE.Vector3(0, coilHalfH+0.35, 0), text: "ARMATURE COIL" },
+    { pos: new THREE.Vector3(0, commY, brushZ+0.3), text: "COMMUTATOR / BRUSHES" },
+    { pos: new THREE.Vector3(0, shaftLen/2+0.15, 0), text: "SHAFT" },
+    { pos: new THREE.Vector3(0.9, battY-0.35, 0), text: "DC SOURCE" },
+  ];
+  labelDefs.forEach(function(d){
+    const el = document.createElement('div');
+    el.className = 'label3d';
+    el.textContent = d.text;
+    labelsLayer.appendChild(el);
+    d.el = el;
+  });
+
+  // ---------------- schematic (2D circuit inset) ----------------
+  const schCanvas = document.getElementById('schematic');
+  const sctx = schCanvas.getContext('2d');
+  function drawSchematic(currentIsA){
+    const w = schCanvas.width, h = schCanvas.height;
+    sctx.clearRect(0,0,w,h);
+    sctx.strokeStyle = '#5a6a85'; sctx.lineWidth = 2; sctx.lineCap='round';
+    // battery
+    sctx.strokeStyle = '#8b98a9';
+    sctx.beginPath(); sctx.moveTo(20,60); sctx.lineTo(20,40); sctx.lineTo(38,40); sctx.stroke();
+    sctx.beginPath(); sctx.moveTo(38,32); sctx.lineTo(38,48); sctx.stroke();
+    sctx.beginPath(); sctx.moveTo(46,36); sctx.lineTo(46,44); sctx.stroke();
+    sctx.beginPath(); sctx.moveTo(46,40); sctx.lineTo(60,40); sctx.stroke();
+    sctx.fillStyle = '#7c8aa0'; sctx.font = '9px IBM Plex Mono'; sctx.fillText('DC', 16, 74);
+    // top wire to brush
+    sctx.beginPath(); sctx.moveTo(20,60); sctx.lineTo(20,20); sctx.lineTo(72,20); sctx.stroke();
+    sctx.beginPath(); sctx.moveTo(60,40); sctx.lineTo(150,40); sctx.lineTo(150,80); sctx.lineTo(20,80); sctx.lineTo(20,60); sctx.stroke();
+    // brushes (small rects)
+    sctx.fillStyle = '#1c2230'; sctx.fillRect(68,16,10,8); sctx.fillRect(68,76,10,8);
+    // commutator ring (circle)
+    sctx.strokeStyle = COL_COPPER_HEX; sctx.lineWidth=6;
+    sctx.beginPath(); sctx.arc(100,50,26,0.15,Math.PI-0.15); sctx.strokeStyle = currentIsA ? '#d64545' : '#3b6fd6'; sctx.stroke();
+    sctx.beginPath(); sctx.arc(100,50,26,Math.PI+0.15,2*Math.PI-0.15); sctx.strokeStyle = currentIsA ? '#3b6fd6' : '#d64545'; sctx.stroke();
+    // current arrow
+    sctx.fillStyle = currentIsA ? '#f2b134' : '#f2b134';
+    sctx.font = '8px IBM Plex Mono'; sctx.fillStyle = '#7c8aa0';
+    sctx.fillText('coil', 90, 96);
+  }
+  const COL_COPPER_HEX = '#c97a45';
+
+  // ---------------- state ----------------
+  let angle = 0;
+  let playing = true;
+  let speed = 3.5; // deg-ish scale, real: rad/sec factor
+  let explode = 0;
+  let showField = true, showForce = true, showLabels = true;
+  const clock = new THREE.Clock();
+
+  function currentHalf(){
+    const a = ((angle % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+    return a < Math.PI ? 0 : 1;
+  }
+
+  // ---------------- UI wiring ----------------
+  const playBtn = document.getElementById('playBtn');
+  playBtn.addEventListener('click', function(){
+    playing = !playing;
+    playBtn.textContent = playing ? '⏸ Pause' : '▶ Play';
+  });
+  const speedSlider = document.getElementById('speedSlider');
+  const speedVal = document.getElementById('speedVal');
+  speedSlider.addEventListener('input', function(){ speed = parseFloat(speedSlider.value); speedVal.textContent = speed.toFixed(1); });
+
+  document.getElementById('toggleField').addEventListener('change', function(e){ showField = e.target.checked; fieldGroup.visible = showField; });
+  document.getElementById('toggleForce').addEventListener('change', function(e){
+    showForce = e.target.checked; forceArrowA.visible = showForce; forceArrowB.visible = showForce;
+  });
+  document.getElementById('toggleLabels').addEventListener('change', function(e){
+    showLabels = e.target.checked;
+    labelDefs.forEach(function(d){ d.el.style.display = showLabels ? 'block' : 'none'; });
+  });
+  document.getElementById('toggleClip').addEventListener('change', function(e){
+    clipOn = e.target.checked;
+    const planes = clipOn ? [clipPlane] : [];
+    housingMat.clippingPlanes = planes;
+    poleN.material.clippingPlanes = planes;
+    poleS.material.clippingPlanes = planes;
+  });
+
+  const panelBody = document.getElementById('panelBody');
+  const panelCollapse = document.getElementById('panelCollapse');
+  panelCollapse.addEventListener('click', function(){
+    const collapsed = panelBody.classList.toggle('collapsed');
+    panelCollapse.textContent = collapsed ? '+' : '–';
+    panelCollapse.setAttribute('aria-label', collapsed ? 'Expand controls' : 'Collapse controls');
+  });
+
+  function wireAccordion(toggleId, bodyEl){
+    const toggle = document.getElementById(toggleId);
+    toggle.addEventListener('click', function(){
+      const open = bodyEl.hidden;
+      bodyEl.hidden = !open;
+      toggle.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+  }
+  wireAccordion('legendToggle', document.getElementById('legend'));
+  wireAccordion('circuitToggle', document.getElementById('circuit-body'));
+
+
+  const explodeSlider = document.getElementById('explodeSlider');
+  const explodeVal = document.getElementById('explodeVal');
+  explodeSlider.addEventListener('input', function(){
+    explode = parseFloat(explodeSlider.value);
+    explodeVal.textContent = Math.round(explode*100) + '%';
+    applyExplode();
+  });
+  function applyExplode(){
+    poleN.position.x = -explode*1.4;
+    poleS.position.x = explode*1.4;
+    housing.position.y = explode*1.6;
+    housingEdges.position.y = explode*1.6;
+    battGroup.position.y = battY - explode*0.9;
+    brushTop.position.y = commY - explode*0.9;
+    brushBot.position.y = commY - explode*0.9;
+  }
+
+  // ---------------- pointer / orbit ----------------
+  let dragging = false, lastX=0, lastY=0, downX=0, downY=0;
+  const dom = renderer.domElement;
+  dom.addEventListener('pointerdown', function(e){
+    dragging = true; lastX = downX = e.clientX; lastY = downY = e.clientY;
+  });
+  window.addEventListener('pointermove', function(e){
+    if(!dragging || renderer.xr.isPresenting) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    spherical.theta -= dx * 0.006;
+    spherical.phi -= dy * 0.006;
+    spherical.phi = Math.max(0.25, Math.min(Math.PI-0.25, spherical.phi));
+    updateCameraFromSpherical();
+  });
+  window.addEventListener('pointerup', function(e){
+    if(!dragging) return;
+    dragging = false;
+    const moved = Math.hypot(e.clientX-downX, e.clientY-downY);
+    if (moved < 6) handlePick(e.clientX, e.clientY);
+  });
+  dom.addEventListener('wheel', function(e){
+    e.preventDefault();
+    spherical.radius *= (1 + e.deltaY*0.001);
+    spherical.radius = Math.max(4, Math.min(16, spherical.radius));
+    updateCameraFromSpherical();
+  }, { passive:false });
+
+  const raycaster = new THREE.Raycaster();
+  const mouseNDC = new THREE.Vector2();
+  const infoPanel = document.getElementById('info-panel');
+  const infoTitle = document.getElementById('info-title');
+  const infoDesc = document.getElementById('info-desc');
+  document.getElementById('info-close').addEventListener('click', function(){ infoPanel.classList.remove('show'); });
+
+  function handlePick(clientX, clientY){
+    const rect = dom.getBoundingClientRect();
+    mouseNDC.x = ((clientX-rect.left)/rect.width)*2 - 1;
+    mouseNDC.y = -((clientY-rect.top)/rect.height)*2 + 1;
+    raycaster.setFromCamera(mouseNDC, camera);
+    const hits = raycaster.intersectObjects(interactive, false);
+    if(hits.length){
+      const info = hits[0].object.userData.info;
+      infoTitle.textContent = info.title;
+      infoDesc.textContent = info.desc;
+      infoPanel.classList.add('show');
+    } else {
+      infoPanel.classList.remove('show');
+    }
+  }
+
+  // ---------------- resize ----------------
+  window.addEventListener('resize', function(){
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // ---------------- label projection ----------------
+  const projVec = new THREE.Vector3();
+  function updateLabels(){
+    if(!showLabels) return;
+    labelDefs.forEach(function(d){
+      projVec.copy(d.pos).applyMatrix4(motorGroup.matrixWorld);
+      projVec.project(camera);
+      const inFront = projVec.z < 1;
+      const x = (projVec.x*0.5+0.5) * window.innerWidth;
+      const y = (-projVec.y*0.5+0.5) * window.innerHeight;
+      d.el.style.display = inFront ? 'block' : 'none';
+      d.el.style.left = x + 'px';
+      d.el.style.top = y + 'px';
+    });
+  }
+
+  // ---------------- AR (WebXR) ----------------
+  const arBtn = document.getElementById('arBtn');
+  const arNote = document.getElementById('arNote');
+  const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  let arSupported = false;
+
+  if (navigator.xr && navigator.xr.isSessionSupported) {
+    navigator.xr.isSessionSupported('immersive-ar').then(function(supported){
+      arSupported = supported;
+      arBtn.classList.add('ready');
+      if(!supported){
+        arBtn.disabled = true;
+        arBtn.textContent = iOS ? 'AR needs Chrome on Android' : 'AR not available on this device';
+      }
+    }).catch(function(){
+      arBtn.classList.add('ready'); arBtn.disabled = true; arBtn.textContent = 'AR not available';
+    });
+  } else {
+    // No WebXR API at all in this browser (this is the normal case on iOS Safari)
+    arBtn.classList.add('ready');
+    arBtn.disabled = true;
+    arBtn.textContent = iOS ? 'AR needs Chrome on Android' : 'AR not supported in this browser';
+  }
+
+  // reticle: shows where the motor will land before the user taps to place it
+  const reticle = new THREE.Mesh(
+    new THREE.RingGeometry(0.08, 0.10, 32).rotateX(-Math.PI/2),
+    new THREE.MeshBasicMaterial({ color: 0xf2b134 })
+  );
+  reticle.matrixAutoUpdate = false;
+  reticle.visible = false;
+  scene.add(reticle);
+
+  let arSession = null;
+  let hitTestSource = null;
+  let hitTestSourceRequested = false;
+  let placed = false;
+  let surfaceTracked = false;
+  const preArState = { pos: new THREE.Vector3(), scale: new THREE.Vector3(1,1,1) };
+
+  function endArUI(){
+    renderer.xr.enabled = false;
+    arSession = null;
+    hitTestSource = null;
+    hitTestSourceRequested = false;
+    placed = false;
+    surfaceTracked = false;
+    reticle.visible = false;
+    motorGroup.visible = true;
+    motorGroup.position.copy(preArState.pos);
+    motorGroup.scale.copy(preArState.scale);
+    arBtn.textContent = '▲ View in AR';
+    arNote.style.display = 'none';
+    document.getElementById('panel').style.display = '';
+    document.getElementById('hud-title').style.display = '';
+  }
+
+  function startArSession(withHitTest){
+    const init = withHitTest
+      ? { requiredFeatures: ['hit-test'], optionalFeatures: ['local-floor','dom-overlay'], domOverlay: { root: document.body } }
+      : { optionalFeatures: ['local-floor','dom-overlay'], domOverlay: { root: document.body } };
+
+    navigator.xr.requestSession('immersive-ar', init)
+      .then(function(session){
+        arSession = session;
+        renderer.xr.enabled = true;
+        renderer.xr.setReferenceSpaceType('local');
+        renderer.xr.setSession(session);
+
+        preArState.pos.copy(motorGroup.position);
+        preArState.scale.copy(motorGroup.scale);
+        motorGroup.scale.set(0.16,0.16,0.16);
+        placed = !withHitTest; // no hit-test support on this device: fall back to a fixed placement
+
+        if (withHitTest){
+          motorGroup.visible = false; // hidden until a surface is found — then placed automatically
+          arNote.textContent = 'Point your camera at a flat surface — the motor will appear automatically. Tap anytime to move it.';
+          arNote.style.display = 'block';
+        } else {
+          motorGroup.visible = true;
+          motorGroup.position.set(0,-0.15,-0.8);
+        }
+
+        arBtn.textContent = 'Exit AR';
+        document.getElementById('panel').style.display = 'none';
+        document.getElementById('hud-title').style.display = 'none';
+
+        session.addEventListener('select', function(){
+          // A tap after auto-placement just moves the motor to the currently tracked surface point.
+          if (withHitTest && surfaceTracked){
+            reticle.matrix.decompose(motorGroup.position, motorGroup.quaternion, new THREE.Vector3());
+            motorGroup.visible = true;
+            placed = true;
+            arNote.style.display = 'none';
+          }
+        });
+
+        session.addEventListener('end', endArUI);
+      })
+      .catch(function(err){
+        if (withHitTest){
+          // Some devices reject the required 'hit-test' feature; retry with a fixed placement instead
+          startArSession(false);
+          return;
+        }
+        arNote.textContent = 'Could not start AR: camera permission may be blocked. Try opening this page directly in its own browser tab (not embedded) and allow camera access.';
+        arNote.style.display = 'block';
+        setTimeout(function(){ arNote.style.display = 'none'; }, 5000);
+      });
+  }
+
+  arBtn.addEventListener('click', function(){
+    if (arSession){ arSession.end(); return; }
+    if (!arSupported){
+      arNote.textContent = iOS
+        ? "AR needs a WebXR-capable browser. Safari on iOS doesn't support WebXR yet — try Chrome on an Android phone instead."
+        : 'AR needs a WebXR-capable phone (e.g. Chrome on Android) served over HTTPS in its own tab.';
+      arNote.style.display = 'block';
+      setTimeout(function(){ arNote.style.display = 'none'; }, 4500);
+      return;
+    }
+    hitTestSourceRequested = false;
+    startArSession(true);
+  });
+
+  // ---------------- animate ----------------
+  const wForce = new THREE.Vector3();
+  const rVecA = new THREE.Vector3(), rVecB = new THREE.Vector3();
+  const worldA = new THREE.Vector3(), worldB = new THREE.Vector3(), pivot = new THREE.Vector3();
+
+  function animate(timestamp, frame){
+    if (frame){
+      const refSpace = renderer.xr.getReferenceSpace();
+      if (!hitTestSourceRequested){
+        hitTestSourceRequested = true;
+        frame.session.requestReferenceSpace('viewer').then(function(viewerSpace){
+          frame.session.requestHitTestSource({ space: viewerSpace }).then(function(source){
+            hitTestSource = source;
+          });
+        });
+      }
+      if (hitTestSource){
+        const results = frame.getHitTestResults(hitTestSource);
+        if (results.length){
+          surfaceTracked = true;
+          reticle.visible = !placed;
+          reticle.matrix.fromArray(results[0].getPose(refSpace).transform.matrix);
+          if (!placed){
+            // First surface found — drop the motor here automatically, no tap needed.
+            reticle.matrix.decompose(motorGroup.position, motorGroup.quaternion, new THREE.Vector3());
+            motorGroup.visible = true;
+            placed = true;
+            arNote.textContent = 'Motor placed. Tap the screen anytime to move it to a new spot.';
+            setTimeout(function(){ if(arSession) arNote.style.display = 'none'; }, 2500);
+          }
+        } else {
+          surfaceTracked = false;
+          reticle.visible = false;
+        }
+      }
+    }
+    const dt = Math.min(clock.getDelta(), 0.05);
+    if(playing){
+      angle += dt * speed * 0.6;
+      rotorGroup.rotation.y = angle;
+    }
+
+    const half = currentHalf();
+    const colA = half===0 ? COL_RED : COL_BLUE;
+    const colB = half===0 ? COL_BLUE : COL_RED;
+    sideA.material.color.setHex(colA);
+    sideB.material.color.setHex(colB);
+    commSegA.material.color.setHex(colA);
+    commSegB.material.color.setHex(colB);
+
+    if(showForce){
+      pivot.copy(rotorGroup.position);
+      sideA.getWorldPosition(worldA);
+      sideB.getWorldPosition(worldB);
+      rVecA.subVectors(worldA, pivot);
+      rVecB.subVectors(worldB, pivot);
+      const omega = playing ? Math.sign(speed) || 1 : (Math.sin(angle*0)+1)*0+1;
+      wForce.set(0, omega, 0).cross(rVecA).normalize();
+      forceArrowA.position.copy(worldA);
+      forceArrowA.setDirection(wForce);
+      wForce.set(0, omega, 0).cross(rVecB).normalize();
+      forceArrowB.position.copy(worldB);
+      forceArrowB.setDirection(wForce);
+    }
+
+    drawSchematic(half===0);
+    document.getElementById('angleVal').textContent = Math.round((angle*180/Math.PI) % 360) + '°';
+
+    updateLabels();
+    renderer.render(scene, camera);
+  }
+  applyExplode();
+  renderer.setAnimationLoop(animate);
+
+  } // end init
+
+})();
+</script>
+</body>
+</html>
