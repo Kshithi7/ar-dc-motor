@@ -2,10 +2,10 @@
 
 An interactive, browser-based 3D simulation of a DC motor — built to make electromagnetic induction *visible*: the field, the current-carrying coil, the commutator switching, and the resulting force and rotation. Runs on desktop as a full 3D explorable model, and on mobile as a real **Augmented Reality** experience via WebXR — no app install required.
 
-**🔗 Demo:** [Working in Laptop]() [Working in Mobile]()
+**🔗 Demo:** [Working in Laptop](docs/videos/working-laptop2.mp4) [Working in Mobile](docs/videos/mobile_documentation.mp4)
 
 
-![Desktop view of the DC motor model](docs/screenshots/desktop-view.png)
+![Desktop view of the DC motor model](docs/screenshot/3D_view.png)
 ![Mobile view of the DC motor model](docs/screenshots/desktop-view.png)
 ---
 
@@ -15,7 +15,7 @@ An interactive, browser-based 3D simulation of a DC motor — built to make elec
 - **Field & force visualization** — animated field-line arrows (B) and force-vector arrows (F) update live as the coil rotates through each half-cycle, making the motor effect (F = IL × B) visible rather than abstract.
 - **Cross-section mode** — a clipping plane reveals the internal shaft/coil/commutator assembly hidden behind the housing.
 
-  ![Cross-section mode](docs/screenshots/cross-section-view.jpeg)
+  ![Cross-section mode](docs/screenshot/3D_view.png)
 
 - **Explode view** — a slider pulls the N/S poles and housing apart from the shaft assembly so learners can see how the parts fit together.
 - **Live circuit schematic** — an auto-drawn diagram ties the 3D model back to the standard DC-source-and-coil circuit diagram.
@@ -25,7 +25,7 @@ An interactive, browser-based 3D simulation of a DC motor — built to make elec
 
 | Desktop | Mobile | AR (real device) |
 |---|---|---|
-| ![Desktop view](docs/screenshots/desktop-view.png) | ![Mobile view](docs/screenshots/mobile-view.jpeg) | ![Live AR placement](docs/screenshots/ar-live-placement.jpeg) |
+| ![Desktop view](docs/screenshot/desktop-view.png) | ![Mobile view](docs/screenshots/mobile-view.jpeg) | ![Live AR placement](docs/screenshot/ar_live_placement.jpg) |
 
 ---
 
